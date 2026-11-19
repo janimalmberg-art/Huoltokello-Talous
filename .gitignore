@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+venv/
+.venv/
+
+# Paikallinen data ja varmuuskopiot (asennuksessa: %LOCALAPPDATA%\Huoltokello-Talous\Data)
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+Data/
+varmuuskopiot/
+salaisuudet*
+secret*
+
+# Tyokalu- ja ymparistotiedostot
+_tmp/
+_tyo_tmp/
+tmp/
+.idea/
+.vscode/
+*.log

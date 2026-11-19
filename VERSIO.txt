@@ -1,0 +1,54 @@
+================================================================
+HUOLTOKELLO-TALOUS - muutoshistoria
+================================================================
+
+Sovellus: pienyrityksen talous- ja laskutusmoduuli Huoltokello-tyon-
+hallinnan rinnalle. Asennuspaketti: Huoltokello-Talous-<versio>.zip.
+
+v1.1.0 - 19.11.2026
+-------------------
+- UUSI: Huoltokello-silta (huoltokello_talous/hk_bridge.py + tests/
+  test_hk_bridge.py). Talous lukee Huoltokellon SQLite-tietokantaa
+  suoraan, vain lukuna - ei koskaan kirjoita Huoltokellon tietoihin:
+    * asiakkaat (Customers)        -> asiakkaat, numerolla HK<id>
+    * kauttajat (AspNetUsers)      -> tyontekijat, tasmays s-postilla
+    * tehtavakategoriat            -> tyolajit, tasmays nimella
+    * kuittaukset (HoursWorked)    -> tyoaikakirjaukset tilaan
+      'lahetetty' (vaativat hyvaksynnan), task_ref HK-<tehtava>
+    * kuittausten tarvikkeet        -> tarvikekirjaukset
+- Siltamuuttuja tallennetaan nyt tietokantaan (taulu settings, avain
+  hk.db_path). Talouksen rakennepaivitys kasvoi 1 -> 2 (user_version),
+  migraatio ajetaan alustuksessa automaattisesti.
+- UUSI komento: python -m huoltokello_talous huoltokello-synk
+  [--esikatselu] [--polku X]. Esikatselu nayttaa tuotavaa ennen ajoa;
+  jo tuotuja, paallekkaisia tai lukittujen palkkakausien kirjauksia ei
+  tuoda uudelleen (idempotentti).
+- UUSI web-sivu: Rekisterit > Huoltokello-yhteys (siltapolumappi,
+  huoltokellon kannan sijainti, esikatselu ja valinnainen automaattinen
+  synkronointi).
+- Kellonia (loppu = kuittausaika, alku = loppu - tunnit; saman paivan
+  kuittaukset ketjutetaan perakkain). Kirjausta ei laskuteta, jos
+  tehtava on laskutettu Huoltokellossa tai asiakkaalla on kuukausi-
+  hintainen sopimus ilman tuntihintaa.
+- Huoltokello-Multiasennus-velho (v2.8.0) tukee talousmoduulin asennusta
+  rinnalle (valintaruutu chkTalous / -AsennaTalous-lippu): purkusijainti
+  %LOCALAPPDATA%\Huoltokello-Talous, siltasidonta, kaynnistin ja
+  pikakuvakkeet.
+- README: uusi osiot Huoltokello-sillasta.
+
+v1.0.1 - 19.11.2026
+-------------------
+- Korjaus web-finanssinakymaan (views_finance.py); versiomerkin-
+  nan paivitys (__init__.py).
+
+v1.0.0 - 16.11.2026
+-------------------
+- Ensijulkaisu: tyoaikaseuranta (viikkonakyma, leimaus, hyvaksynta-
+  ketju), tyon hinnoittelu (omakustannus/hinta­suositus), asiakas-
+  hinnoittelu ja tarjoukset, laskutus (viite-/RF-viite, virtuaali-
+  viivakoodi, ALV, kaannetty verovelvollisuus, kotitalousvahennys,
+  maksumuistutus, Finvoice 3.0), kirjanpito (kahdenkertainen malli)
+  ja palkkakoosteet (tyoaikalaki 872/2019, tulorekisterin tulolajit),
+  rajapinta POST /api/v1/tyoajat, CSV-tuonti, vinnit (Finvoice,
+  Netvisor, muut vientiprofiilit), tests/ (30 testia), Asenna-Talous
+  .cmd/.ps1, docs/Lahteet.md.
