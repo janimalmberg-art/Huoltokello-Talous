@@ -39,6 +39,19 @@ function Get-GitExe {
     return $g.Source
 }
 
+function Invoke-Git {
+    # Ajaa git-komennon siten etta gitin viestit stderrin kautta (varoitukset,
+    # edistymistiedot) eivat kaada skriptia; oikeat epaonnistukset havaitaan
+    # exit-koodista.
+    param([Parameter(Mandatory)][string[]]$GitArgs)
+    $out = $null
+    try { $out = (& git @GitArgs 2>&1 | Out-String) } catch { }
+    if ($LASTEXITCODE -ne 0) {
+        throw ('git ' + ($GitArgs -join ' ') + ' epaonnistui (koodi ' + $LASTEXITCODE + ')')
+    }
+    return $out
+}
+
 function Get-GitHubCredential {
     # Koneen tallennettu GitHub-tunnus (Git Credential Manager).
     # Token ei tulostu eika tallennu mihinkaan tiedostoon.
@@ -114,7 +127,7 @@ try {
     $ch = git config --get credential.helper 2>$null
 } catch { $ch = $null }
 if ([string]::IsNullOrWhiteSpace(($ch | Out-String))) {
-    git config --global credential.helper manager
+    $null = Invoke-Git @('config','--global','credential.helper','manager')
     Write-Host 'Asetettiin credential.helper = manager' -ForegroundColor DarkGray
 }
 
@@ -178,21 +191,21 @@ if ($null -eq $repo) {
 # ------------------------------------------------------------
 
 if (-not (Test-Path (Join-Path $PSScriptRoot '.git'))) {
-    git init -b $Haara
-    git config user.name $User
-    git config user.email $gitEmail
-    git config core.autocrlf false
+    $null = Invoke-Git @('init','-b',$Haara)
+    $null = Invoke-Git @('config','user.name',$User)
+    $null = Invoke-Git @('config','user.email',$gitEmail)
+    $null = Invoke-Git @('config','core.autocrlf','false')
     Write-Host "Git-repositorio alustettiin (haara: $Haara)."
 } else {
-    git config core.autocrlf false
+    $null = Invoke-Git @('config','core.autocrlf','false')
 }
 
-git add --all
+$null = Invoke-Git @('add','--all')
 $staged = (git status --porcelain | Out-String)
 if ([string]::IsNullOrWhiteSpace($staged)) {
     Write-Host 'Ei uusia muutoksia commitoitavana.' -ForegroundColor DarkGray
 } else {
-    git commit -m 'Ensijulkaisu: Huoltokello-Talous 1.1.0 (Huoltokello-silta, asennuspaketti mukana)'
+    $null = Invoke-Git @('commit','-m','Ensijulkaisu: Huoltokello-Talous 1.1.0 (Huoltokello-silta, asennuspaketti mukana)')
     Write-Host 'Commit OK.'
 }
 
@@ -200,15 +213,16 @@ $remoteUrl = "https://github.com/$User/$Nimi.git"
 $cur = $null
 try { $cur = git remote get-url origin 2>$null } catch { }
 if ([string]::IsNullOrWhiteSpace(($cur | Out-String))) {
-    git remote add origin $remoteUrl
+    $null = Invoke-Git @('remote','add','origin',$remoteUrl)
 } else {
-    git remote set-url origin $remoteUrl
+    $null = Invoke-Git @('remote','set-url','origin',$remoteUrl)
 }
 
 Write-Host "Tyonnetaan haara $Haara GitHubiin (hetkeen menessa)..."
-git push -u origin $Haara
-if ($LASTEXITCODE -ne 0) {
-    throw "Push epaonnistui (koodi $LASTEXITCODE). Tarkista tunnistautuminen: git credential-manager github login"
+try {
+    $null = Invoke-Git @('push','-u','origin',$Haara)
+} catch {
+    throw ("Push epaonnistui. Tarkista tunnistautuminen: git credential-manager github login - Syy: " + $_.Exception.Message)
 }
 Write-Host 'Push OK.' -ForegroundColor Green
 
