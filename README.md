@@ -9,6 +9,10 @@ toimii selaimessa (myös puhelimessa), ei ulkoisia riippuvuuksia
 (Muutoshistoria: [VERSIO.txt](VERSIO.txt).)
 ## Asennus (Windows)
 
+> **Yksityiskohtainen, askel askeleelta -asennusohje:** katso **[ASENNUSOHJEET.md](ASENNUSOHJEET.md)** –
+> se kattaa latauksen, purkamisen, asennuksen ensimmäisen johto-tunnuksen, uuden version asennuksen,
+> unohtuneen salasanan, asennuksen purun ja yleisimmät ongelmat. Alla lyhyt yhteenveto.
+
 1. Asenna Python 3.10 tai uudempi (python.org) – asennusohjelma tarjoaa myös winget-asennuksen.
 2. Pura paketti ja kaksoisnapsauta **`Asenna-Talous.cmd`** (asentaa, luo johto-tunnuksen, työpöydän
    kuvakkeen, automaattisen käynnistyksen sekä yöajon: varmuuskopio + kuukausivienti klo 03.15).
