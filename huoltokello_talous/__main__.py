@@ -6,6 +6,8 @@
   varmuuskopio        johdonmukainen varmuuskopio tietokannasta (30 uusinta säilyy)
   paketti             muodostaa kirjanpitäjän paketin kaudelta (ja lähettää --laheta)
   automaattivienti    ajastettu tehtävä: edellisen kuun paketti määritettyyn palveluun
+  demodata            lataa esittelyaineiston tyhjään tietokantaan (asiakkaat, aikakirjaukset,
+                      laskut, palkat, demo-käyttäjät - ei tuotantokäyttöön)
   tarkista            tietokannan eheys, muutoslokin ketju ja kirjausten täsmäys
 """
 from __future__ import annotations
@@ -236,6 +238,18 @@ def cmd_serve(args) -> int:
     return 0
 
 
+def cmd_demodata(args) -> int:
+    """Lataa esittelyaineiston tyhjään tietokantaan (python -m huoltokello_talous demodata)."""
+    from . import demo
+    try:
+        summary = demo.load()
+    except demo.DemoError as exc:
+        print(f"Virhe: {exc}")
+        return 1
+    print(demo.summarize(summary))
+    return 0
+
+
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(prog="huoltokello_talous", description=f"Huoltokello-Talous {__version__}")
     p.add_argument("--data", help="datakansio (oletus %%LOCALAPPDATA%%\\Huoltokello-Talous\\Data)")
@@ -272,6 +286,8 @@ def main(argv=None) -> int:
     a.set_defaults(fn=cmd_hk)
     a = sub.add_parser("tarkista")
     a.set_defaults(fn=cmd_verify)
+    a = sub.add_parser("demodata", help="lataa demodataa tyhjään tietokantaan (esittelykäyttöön)")
+    a.set_defaults(fn=cmd_demodata)
     args = p.parse_args(argv)
     data_dir = app_context.init(args.data)
     _setup_logging(data_dir, args.verbose)

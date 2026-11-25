@@ -5,6 +5,23 @@ HUOLTOKELLO-TALOUS - muutoshistoria
 Sovellus: pienyrityksen talous- ja laskutusmoduuli Huoltokello-tyon-
 hallinnan rinnalle. Asennuspaketti: Huoltokello-Talous-<versio>.zip.
 
+v1.3.0 - 25.11.2026
+-------------------
+- UUSI komento: python -m huoltokello_talous demodata. Lataa tyhjaan
+  tietokantaan valmiin esittelyaineiston (huoltokello_talous/demo.py):
+  demoyrityksen, tyolajit, asiakkaat (Y-tunnukset ja OVT-tunnukset
+  generoiduina), tarvikkeet, asiakashinnat, tyontekijat, kayttajat
+  kaikille rooleille, kaksi kuukautta tyoaika- ja tarvikekirjauksia
+  (hyvaksytty/lahetetty/luonnos/hylatty), kaksi tarjousta, laskuja
+  kaikissa tiloissa (maksettu, osamaksu, eraantynyt + maksumuistutus
+  viivastyskoroilla, hyvitetty + hyvityslasku, luonnos + kasin lisatty
+  rivi) sek lukitun ja luonnoksellisen palkkajakson jaksotusviennit
+  (PA). Aineisto luodaan moduulien julkisilla funktioilla, jolloin
+  laskunumerointi, ALV-koodit (ALV25.5, RAK, EIALV), RF-viitteet ja
+  tilioinnit noudattavat tuotantologiikkaa. Lataus vain tyhjaan
+  tietokantaan ja vain kerran (asetus demo.seeded, suojattu
+  _assert_empty()-tarkistuksella, tarkastusketjuryys kirjataan).
+
 v1.1.0 - 19.11.2026
 -------------------
 - UUSI: Huoltokello-silta (huoltokello_talous/hk_bridge.py + tests/

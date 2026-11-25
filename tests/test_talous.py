@@ -398,5 +398,67 @@ class TestWeb(Base):
         self.assertEqual(cm.exception.code, 401)
 
 
+class TestDemodata(unittest.TestCase):
+    """Esittelyaineisto: lataus tyhjään tietokantaan, suojaudut ja tilojen oikeellisuus."""
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp(prefix="hkt-demo-test-")
+        app_context.init(self.tmp)
+
+    def tearDown(self):
+        db.close()
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def test_load_once_into_empty_db(self):
+        from huoltokello_talous import demo
+        self.assertFalse(demo.on_seeded())
+        s = demo.load()
+        self.assertEqual(s["tyolajit"], 6)
+        self.assertEqual(s["tarvikkeet"], 4)
+        self.assertEqual(s["asiakkaat"], 5)
+        self.assertEqual(s["tyontekijat"], 6)
+        self.assertEqual(s["kayttajat"], 8)
+        self.assertEqual(s["tarjoukset"], 2)
+        self.assertGreater(s["tyopaivat"], 0)
+        self.assertEqual(s["reminders"], 1)
+        self.assertEqual(s["credits"], 1)
+        self.assertEqual(s["payments"], 3)
+        self.assertTrue(demo.on_seeded())
+        # toinen lataus hylätään
+        with self.assertRaises(demo.DemoError):
+            demo.load()
+
+    def test_states_and_ledger(self):
+        from huoltokello_talous import demo
+        demo.load()
+        statuses = {r["status"] for r in db.q("SELECT DISTINCT status FROM invoices")}
+        self.assertLessEqual({"maksettu", "osittain", "avoin", "hyvitetty", "luonnos"}, statuses)
+        credit = db.q1("SELECT total_gross, credited_invoice_id FROM invoices WHERE kind = 'hyvitys'")
+        self.assertTrue(credit["total_gross"].startswith("-") and credit["credited_invoice_id"])
+        self.assertEqual(db.q1("SELECT COUNT(*) AS n FROM invoices WHERE reminder_count = 1")["n"], 1)
+        self.assertEqual(db.q1("SELECT COUNT(*) AS n FROM invoices WHERE reverse_charge = 1")["n"], 2)
+        codes = {r[0] for r in db.q("SELECT DISTINCT vat_code FROM invoice_lines")}
+        self.assertIn("ALV25.5", codes)
+        self.assertTrue(codes & {"RAK", "EIALV"})
+        self.assertTrue(db.q1("SELECT CAST(SUM(debit) = SUM(credit) AS INTEGER) AS ok FROM journal_lines")["ok"])
+        pay = {r[0] for r in db.q("SELECT DISTINCT status FROM payroll_runs")}
+        self.assertEqual(pay, {"lukittu", "luonnos"})
+        locked = db.q1("SELECT period_start AS p FROM payroll_runs WHERE status = 'lukittu'")["p"]
+        m3_first = demo._add_months(dt.date.today().replace(day=1), -2).isoformat()
+        self.assertEqual(locked, m3_first[:8] + "01")
+
+    def test_guard_and_login(self):
+        from huoltokello_talous import demo
+        demo.load()
+        # tyhjyyssuoja: lippu pois -> ei enää tyhjä -> hylätään
+        settings.set(demo.FLAG, "")
+        with self.assertRaises(demo.DemoError) as cm:
+            demo.load()
+        self.assertIn("ei ole tyhjä", str(cm.exception))
+        # demo-kirjautuminen toimii tulosteessa näytetyllä salasanalla
+        session = security.authenticate("johto@huolto.fi", demo._password_for("johto"))
+        self.assertTrue(session and session["id"] > 0)
+
+
 if __name__ == "__main__":
     unittest.main()

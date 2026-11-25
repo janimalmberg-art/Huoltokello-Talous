@@ -1,17 +1,10 @@
-# Huoltokello-Talous 1.1
+# Huoltokello-Talous 1.0
 
-Pieniyrityksen talous- ja laskutusmoduuli Huoltokello-työhallinnan rinnalle.
 Työajanseuranta, työn hinnoittelu, laskutus, kirjanpito, palkkakoosteet ja viennit kirjanpitoon –
-toimii selaimessa (myös puhelimessa), ei ulkoisia riippuvuuksia
+Huoltokello-työhallinnan rinnalle. Toimii selaimessa (myös puhelimessa), ei ulkoisia riippuvuuksia
 (Python 3.10+ ja sen vakiokirjasto), tietokantana SQLite.
 
-**Lataa asennuspaketti:** [Huoltokello-Talous-1.1.0.zip](https://github.com/janimalmberg-art/Huoltokello-Talous/releases/latest/download/Huoltokello-Talous-1.1.0.zip)
-(Muutoshistoria: [VERSIO.txt](VERSIO.txt).)
 ## Asennus (Windows)
-
-> **Yksityiskohtainen, askel askeleelta -asennusohje:** katso **[ASENNUSOHJEET.md](ASENNUSOHJEET.md)** –
-> se kattaa latauksen, purkamisen, asennuksen ensimmäisen johto-tunnuksen, uuden version asennuksen,
-> unohtuneen salasanan, asennuksen purun ja yleisimmät ongelmat. Alla lyhyt yhteenveto.
 
 1. Asenna Python 3.10 tai uudempi (python.org) – asennusohjelma tarjoaa myös winget-asennuksen.
 2. Pura paketti ja kaksoisnapsauta **`Asenna-Talous.cmd`** (asentaa, luo johto-tunnuksen, työpöydän
@@ -21,7 +14,15 @@ toimii selaimessa (myös puhelimessa), ei ulkoisia riippuvuuksia
    käyttäjät (liitä työntekijän tunnus työntekijään).
 
 Komentorivi: `python -m huoltokello_talous --help` (alusta, palvelin, luo-johto, varmuuskopio, paketti,
-automaattivienti, tarkista).
+automaattivienti, huoltokello-synk, demodata, tarkista).
+
+**Demodata (esittely):** tyhjään tietokantaan saa valmiin esittelyaineiston komennolla
+`python -m huoltokello_talous demodata`. Lataus lisää demoyrityksen, työlajit, asiakkaat
+(Y-tunnukset ja OVT-tunnukset generoituna), tarvikkeet, työntekijät ja demo-käyttäjät,
+kaksi kuukautta työaika- ja tarvikekirjauksia, tarjouksia sekä laskuja eri tiloissa
+(maksettu, osamaksu, erääntynyt + maksumuistutus, hyvitetty, luonnos) ja kaksi palkkajaksoa.
+Lataus onnistuu vain tyhjään tietokantaan ja vain kerran; demo-käyttäjien salasanat
+näytetään vain latauksen tulosteessa. Ei tuotantokäyttöön.
 
 **Lähiverkko ja puhelimet:** käynnistä HTTPS:llä, jotta salasanat eivät kulje selkokielisinä:
 `python -m huoltokello_talous palvelin --host 0.0.0.0 --port 8443 --cert varmenne.pem --key avain.pem`
@@ -131,12 +132,11 @@ varmenteen tarkistuksella, johdonmukaiset varmuuskopiot (SQLite online backup + 
 
 ## Testit
 
-`python -m unittest discover -s tests` – 35 testiä: viitenumerot, RF, IBAN, Y-tunnus, Finanssialan
+`python -m unittest discover -s tests` – 30 testiä: viitenumerot, RF, IBAN, Y-tunnus, Finanssialan
 virtuaaliviivakoodiesimerkki, ALV, pyhäpäivät, ylityöt, salasanapolitiikka, lukitus, muutoslokin suojaus,
 istunnot, salaisuudet, tilakone, laskutussykli, käännetty ALV, kotitalousvähennys, hyvitys ja numerosarja,
 lukittu kausi, viivästyskorko, palkkakooste ja lukitus, kaikki vientiprofiilit, paketin manifesti, kansio-
-siirron idempotenssi, Netvisor-tositteet, Huoltokello-silta sekä HTTP-tason testit (turvaotsakkeet,
-CSRF, XSS, roolit, API).
+siirron idempotenssi, Netvisor-tositteet sekä HTTP-tason testit (turvaotsakkeet, CSRF, XSS, roolit, API).
 
 ## Rajoitukset
 
@@ -148,3 +148,11 @@ CSRF, XSS, roolit, API).
   operaattorin tai Finanssiala ry:n validaattorilla ennen verkkolaskutuksen aloittamista.
 - Vuosittain päivitettävät luvut (ALV, km, päivärahat, viitekorko, sivukulut) ovat asetuksissa – lähteet:
   `docs/Lahteet.md`.
+
+## Muutoshistoria
+
+- **1.2.0** – Uudistettu ulkoasu: ryhmitelty sivuvalikko kuvakkeineen (Arki, Myynti, Talous, Hallinta),
+  tilannekuva etusivulla (tervehdys, tunnusluvut, laskutus kuukausittain, pikatoiminnot), uusi kirjautumissivu,
+  värikoodatut tilamerkit, selkeämmät lomakkeet ja taulukot sekä puhelimeen liukuva valikko. Toiminnot ja tiedot ennallaan.
+- **1.1.0** – Suora Huoltokello-yhteys (kuittaukset, asiakkaat, työntekijät, tarvikkeet).
+- **1.0.1** – Korjauksia hinnoitteluun ja vientien siirtoon.
