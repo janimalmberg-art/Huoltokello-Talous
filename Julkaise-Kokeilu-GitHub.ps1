@@ -87,10 +87,24 @@ $hdr = @{
 
 # ------------------------------------------------- 1) vanhojen poisto
 
+function Flatten-HkReleet {
+    param($X)
+    $ulos = @()
+    if ($null -eq $X) { return , $ulos }
+    foreach ($i in @($X)) {
+        if ($i -is [System.Array]) {
+            $ulos += Flatten-HkReleet $i
+        }
+        elseif ($null -ne $i) { $ulos += $i }
+    }
+    return , $ulos
+}
+
 if (-not $EiJulkaisua) {
     Write-Host 'Poistetaan GitHubista aiemmat releaset ja tagit...'
-    $releaset = @(Invoke-GhApi "$api/releases?per_page=100" -Otsakkeet $hdr)
-    if ($null -ne $releaset -and $releaset.Count -gt 0) {
+    $raaka = @(Invoke-GhApi "$api/releases?per_page=100" -Otsakkeet $hdr) | ForEach-Object { $_ }
+    $releaset = Flatten-HkReleet $raaka | Where-Object { $_ -and -not [string]::IsNullOrEmpty($_.tag_name) }
+    if ($releaset.Count -gt 0) {
         foreach ($r in $releaset) {
             $tag = $r.tag_name
             $null = Invoke-GhApi "$api/releases/$($r.id)" -Metodi Delete -Otsakkeet $hdr
@@ -107,6 +121,15 @@ if (-not $EiJulkaisua) {
         }
     } else {
         Write-Host '  aiempia realeasetta ei loytynyt.'
+    }
+    # jaljelle jauneet orphan-tagit pois (release luodaan uudella tagilla)
+    $tagitRaaka = @(Invoke-GhApi "$api/tags?per_page=100" -Otsakkeet $hdr) | ForEach-Object { $_ }
+    $tagit = Flatten-HkReleet $tagitRaaka | Where-Object { $_ -and -not [string]::IsNullOrEmpty($_.name) }
+    foreach ($t in $tagit) {
+        $null = Invoke-GhApi "$api/git/refs/tags/$($t.name)" -Metodi Delete -Otsakkeet $hdr
+        if ($script:ApiStatus -ge 200 -and $script:ApiStatus -lt 300) {
+            Write-Host ("  poistettu orphan-tagi: {0}" -f $t.name)
+        }
     }
 }
 
@@ -126,8 +149,37 @@ if ($LASTEXITCODE -ne 0) { throw 'git archive epaonnistui.' }
 Expand-Archive -LiteralPath (Join-Path $kokeiluTy 'vienti.zip') -DestinationPath $tila
 Remove-Item (Join-Path $kokeiluTy 'vienti.zip') -Force
 
+# zip-rakentaja, joka kirjoittaa merkinnat aina kauttaviivoin ('/'),
+# jotta paketti puretaan oikein myos ei-Windows-tyokaluilla
+# (PS 5.1:n Compress-Archive kayttaa kenoviivoja)
+function New-HkZip {
+    param([string]$LahdeKansio, [string]$KohdeZip)
+    Add-Type -AssemblyName System.IO.Compression | Out-Null
+    Add-Type -AssemblyName System.IO.Compression.FileSystem | Out-Null
+    $lahde = (Resolve-Path -LiteralPath $LahdeKansio).Path.TrimEnd('\')
+    $juuriNimi = Split-Path -Leaf $lahde
+    if (Test-Path -LiteralPath $KohdeZip) { Remove-Item -LiteralPath $KohdeZip -Force }
+    $fs = [IO.File]::Open($KohdeZip, [IO.FileMode]::CreateNew)
+    $ark = New-Object IO.Compression.ZipArchive($fs, [IO.Compression.ZipArchiveMode]::Create)
+    try {
+        $lo = Get-ChildItem -LiteralPath $lahde -Recurse -File
+        foreach ($tied in $lo) {
+            $rel = $tied.FullName.Substring($lahde.Length).TrimStart('\', '/')
+            $nimi = $juuriNimi + '/' + ($rel -replace '\\', '/')
+            $e = $ark.CreateEntry($nimi, [IO.Compression.CompressionLevel]::Optimal)
+            $e.LastWriteTime = $tied.LastWriteTime
+            $inn = [IO.File]::OpenRead($tied.FullName)
+            $ulos = $e.Open()
+            try { $inn.CopyTo($ulos) } finally { $ulos.Dispose(); $inn.Dispose() }
+        }
+    } finally {
+        $ark.Dispose()
+        $fs.Dispose()
+    }
+}
+
 $zipPolku = Join-Path $kokeiluTy $zipinNimi
-Compress-Archive -Path $tila -DestinationPath $zipPolku -Force
+New-HkZip -LahdeKansio $tila -KohdeZip $zipPolku
 if (-not (Test-Path $zipPolku)) { throw 'Zipin luonti epaonnistui.' }
 $tiivistelma = Get-FileHash -LiteralPath $zipPolku -Algorithm SHA256
 Write-Host ("  valmis: {0}" -f $zipPolku)
