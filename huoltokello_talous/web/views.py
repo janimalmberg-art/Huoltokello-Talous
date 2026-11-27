@@ -8,8 +8,8 @@ from .. import db, security, settings, timesheet
 from ..money import D, ZERO
 from ..security import ROLES
 from .server import HttpError, Request, Response, flash, rate_limited, redirect, route
-from .ui import (CSS, JS, badge, button_form, checkbox, csrf, e, eur, fi, field, form, layout, num, select, table,
-                 textarea)
+from .ui import (CSS, JS, badge, button_form, checkbox, csrf, e, eur, fi, field, form, icon, kpi_card, layout, num,
+                 select, table, textarea, tile)
 
 ALL = ("johto", "tyonjohto", "tyontekija", "kirjanpitaja")
 WORKERS = ("johto", "tyonjohto", "tyontekija")
@@ -134,48 +134,96 @@ def password_post(req):
 
 # ------------------------------------------------------------------ etusivu
 
+MONTHS_FI = ("tammi", "helmi", "maalis", "huhti", "touko", "kesä", "heinä", "elo", "syys", "loka", "marras", "joulu")
+
+
 @route("GET", r"/", ())
 def dashboard(req):
     role = req.session["role"]
     today = dt.date.today()
-    cards = []
+    hour = dt.datetime.now().hour
+    greet = "Hyvää huomenta" if hour < 10 else "Hyvää päivää" if hour < 17 else "Hyvää iltaa"
+    first = str(req.session["name"]).split()[0] if req.session["name"] else ""
+    cards, tiles = [], []
+    hero_btn = ""
     if req.session["employee_id"]:
         week_start = today - dt.timedelta(days=today.weekday())
         mins = db.q1("SELECT COALESCE(SUM(minutes),0) AS m FROM time_entries WHERE employee_id = ? AND work_date >= ? "
                      "AND status <> 'hylatty'", (req.session["employee_id"], week_start.isoformat()))["m"]
         rejected = db.q1("SELECT COUNT(*) AS n FROM time_entries WHERE employee_id = ? AND status = 'hylatty'",
                          (req.session["employee_id"],))["n"]
-        cards.append(f"<div class='card'><div class='muted'>Työtunnit tällä viikolla</div>"
-                     f"<div class='kpi'>{num(D(mins) / 60)} h</div><a href='/tyoaika'>Kirjaa työaikaa →</a>"
-                     + (f"<p class='warn'>{rejected} hylättyä kirjausta odottaa korjausta.</p>" if rejected else "")
-                     + "</div>")
+        cards.append(kpi_card("clock", "teal", "Työtunnit tällä viikolla", f"{num(D(mins) / 60)} h", "/tyoaika",
+                              "Kirjaa työaikaa",
+                              f"<p class='warn'>{rejected} hylättyä kirjausta odottaa korjausta.</p>" if rejected else ""))
+        hero_btn = f"<a class='btn' href='/tyoaika'>{icon('plus')} Kirjaa työaikaa</a>"
+        tiles.append(tile("/tyoaika", "clock", "teal", "Työaika", "kirjaa tunnit ja km"))
+        tiles.append(tile("/tarvikkeet", "box", "amber", "Tarvikkeet", "kirjaa käytetyt tarvikkeet"))
     if role in SUPERVISORS:
         n = db.q1("SELECT COUNT(*) AS n FROM time_entries WHERE status = 'lahetetty'")["n"]
-        cards.append(f"<div class='card'><div class='muted'>Odottaa hyväksyntää</div><div class='kpi'>{n}</div>"
-                     f"<a href='/hyvaksynta'>Hyväksy työajat →</a></div>")
+        cards.append(kpi_card("check", "blue", "Odottaa hyväksyntää", str(n), "/hyvaksynta", "Hyväksy työajat"))
         u = db.q1("SELECT COUNT(*) AS n FROM time_entries WHERE status = 'hyvaksytty' AND billable = 1 "
                   "AND invoice_id IS NULL")["n"]
-        cards.append(f"<div class='card'><div class='muted'>Laskuttamattomia työkirjauksia</div><div class='kpi'>{u}</div>"
-                     f"<a href='/laskut/uusi'>Tee laskut →</a></div>")
+        cards.append(kpi_card("receipt", "amber", "Laskuttamattomia työkirjauksia", str(u), "/laskut/uusi", "Tee laskut"))
+        if n:
+            hero_btn = f"<a class='btn' href='/hyvaksynta'>{icon('check')} Hyväksy {n} kirjausta</a>"
+        elif u:
+            hero_btn = f"<a class='btn' href='/laskut/uusi'>{icon('receipt')} Laskuta {u} kirjausta</a>"
+        tiles.append(tile("/hyvaksynta", "check", "blue", "Hyväksyntä", "viikon tunnit kerralla"))
+        tiles.append(tile("/laskut/uusi", "receipt", "amber", "Laskuta työajat", "luonnokset kaikille asiakkaille"))
+        tiles.append(tile("/tarjoukset", "tag", "rose", "Tarjoukset", "tee tarjous ja muuta laskuksi"))
+    chart = ""
     if role in ("johto", "kirjanpitaja"):
         rows = db.q("SELECT total_gross, paid_amount, due_date FROM invoices WHERE status IN ('avoin','osittain')")
         open_total = sum((D(r["total_gross"]) - D(r["paid_amount"]) for r in rows), ZERO)
         overdue = sum((D(r["total_gross"]) - D(r["paid_amount"]) for r in rows if r["due_date"] < today.isoformat()),
                       ZERO)
-        cards.append(f"<div class='card'><div class='muted'>Avoimet myyntisaamiset</div><div class='kpi'>"
-                     f"{eur(open_total)}</div>Erääntyneet: <b>{eur(overdue)}</b><br><a href='/kirjanpito'>Raportit →</a>"
-                     f"</div>")
+        cards.append(kpi_card("wallet", "rose" if overdue else "green", "Avoimet myyntisaamiset", eur(open_total),
+                              "/kirjanpito", "Raportit", f"<div class='muted'>Erääntyneet: <b>{eur(overdue)}</b></div>"))
         m_start = today.replace(day=1).isoformat()
         sales = db.q1("SELECT COUNT(*) AS n FROM invoices WHERE status <> 'luonnos' AND invoice_date >= ?", (m_start,))
         net = sum((D(r["total_net"]) for r in db.q("SELECT total_net FROM invoices WHERE status <> 'luonnos' "
                                                     "AND invoice_date >= ?", (m_start,))), ZERO)
-        cards.append(f"<div class='card'><div class='muted'>Laskutus kuluva kk (alv 0)</div><div class='kpi'>{eur(net)}"
-                     f"</div>{sales['n']} laskua</div>")
+        cards.append(kpi_card("chart", "violet", "Laskutus kuluva kk (alv 0)", eur(net), "/laskut", "Laskut",
+                              f"<div class='muted'>{sales['n']} laskua</div>"))
+        # kuuden kuukauden laskutus
+        months = []
+        y, m = today.year, today.month
+        for _ in range(6):
+            months.append((y, m))
+            y, m = (y, m - 1) if m > 1 else (y - 1, 12)
+        months.reverse()
+        vals = []
+        for (yy, mm) in months:
+            a = dt.date(yy, mm, 1)
+            b = dt.date(yy + (mm == 12), mm % 12 + 1, 1)
+            v = sum((D(r["total_net"]) for r in db.q("SELECT total_net FROM invoices WHERE status <> 'luonnos' AND "
+                                                      "invoice_date >= ? AND invoice_date < ?",
+                                                      (a.isoformat(), b.isoformat()))), ZERO)
+            vals.append(v)
+        top = max(vals) if vals and max(vals) > 0 else D(1)
+        bars = ""
+        for i, ((yy, mm), v) in enumerate(zip(months, vals)):
+            h = max(3, int(v / top * 100))
+            short = f"{int(v / 1000)} t€" if v >= 1000 else (eur(v) if v else "–")
+            bars += (f"<div class='bar{' now' if i == 5 else ''}'><b>{e(short)}</b>"
+                     f"<i style='height:{h}%;animation-delay:{i * 0.07:.2f}s'></i>{MONTHS_FI[mm - 1]}</div>")
+        chart = (f"<h2>Laskutus kuukausittain (alv 0)</h2><div class='card'><div class='bars'>{bars}</div></div>")
+        tiles.append(tile("/kirjanpito", "book", "violet", "Kirjanpito", "ALV, tuloslaskelma, tase"))
+        tiles.append(tile("/viennit", "send", "violet", "Kirjanpitäjän aineisto", "siirto yhdellä napilla"))
+        if role == "johto":
+            tiles.append(tile("/palkat", "wallet", "green", "Palkkakooste", "ylityöt, lisät, km"))
     setup = ""
     if role == "johto" and (not settings.get_str("company.business_id") or not settings.get_str("company.iban")):
         setup = ("<div class='warn'>Aloita täyttämällä yrityksen tiedot: <a href='/asetukset'>Asetukset</a> → "
                  "lisää työlajit ja asiakkaat: <a href='/rekisterit'>Rekisterit</a>.</div>")
-    return layout(req, "Etusivu", setup + "<div class='grid3'>" + "".join(cards) + "</div>")
+    hero = (f"<div class='hello'><div><h3>{greet}{', ' + e(first) if first else ''}!</h3>"
+            f"<p>{WEEKDAYS_LONG[today.weekday()]} {today.day}.{today.month}.{today.year} · "
+            f"{e(settings.get_str('company.name') or 'Huoltokello-Talous')}</p></div>{hero_btn}</div>")
+    quick = f"<h2>Pikatoiminnot</h2><div class='tiles'>{''.join(tiles)}</div>" if tiles else ""
+    return layout(req, "Etusivu", hero + setup + "<div class='grid3'>" + "".join(cards) + "</div>" + chart + quick)
+
+
+WEEKDAYS_LONG = ("Maanantai", "Tiistai", "Keskiviikko", "Torstai", "Perjantai", "Lauantai", "Sunnuntai")
 
 
 # ------------------------------------------------------------------ työaika
@@ -483,8 +531,10 @@ def registers(req):
              ("/muutosloki", "Muutosloki", "kaikki tapahtumat, eheystarkistus")]
     if req.session["role"] != "johto":
         links = links[:3]
-    body = "<div class='grid3'>" + "".join(f"<a class='card' href='{h}'><b>{e(t)}</b><br><small>{e(d)}</small></a>"
-                                           for h, t, d in links) + "</div>"
+    look = {"/asiakkaat": ("users", "teal"), "/tyolajit": ("case", "amber"), "/tarvikerekisteri": ("box", "amber"),
+            "/tyontekijat": ("user", "green"), "/kayttajat": ("lock", "blue"), "/huoltokello": ("link", "violet"),
+            "/tuonti": ("upload", "blue"), "/api-avaimet": ("key", "rose"), "/muutosloki": ("history", "violet")}
+    body = "<div class='tiles'>" + "".join(tile(h, *look.get(h, ("db", "blue")), t, d) for h, t, d in links) + "</div>"
     return layout(req, "Rekisterit", body)
 
 
