@@ -231,11 +231,37 @@ def cmd_serve(args) -> int:
     stop = threading.Event()
     t = threading.Thread(target=_background, args=(stop,), daemon=True)
     t.start()
+    # KOKEILUVERSIO: valvotaan kokeilujaksoa myös ajossa olevan palvelimen
+    # aikana (tarkistus tunnin välein taustasäikeessä).
+    w = threading.Thread(target=_kokeilu_valvonta, args=(args.data, stop), daemon=True)
+    w.start()
     try:
         server.serve(args.host, args.port, args.cert or "", args.key or "")
     finally:
         stop.set()
     return 0
+
+
+def _kokeilu_valvonta(data_dir: str | None, stop: threading.Event) -> None:
+    """Lopettaa käynnissä olevan palvelimen, kun 90 päivän kokeilujakso päättyy."""
+    import os
+    from . import trial
+    while not stop.wait(3600):
+        try:
+            tila = trial.hae_tila(data_dir)
+        except Exception:  # noqa: BLE001 - valvonta ei saa kaataa palvelinta
+            return
+        if not tila.get("paattynyt"):
+            continue
+        log.critical("Kokeilujakso päättynyt - palvelin pysäytetään.")
+        trial.tulosta_paattymisilmoitus(tila)
+        trial.ikkuna_paattynyt(tila)
+        sys.stdout.flush()
+        try:
+            db.close()
+        except Exception:  # noqa: BLE001
+            pass
+        os._exit(2)
 
 
 def cmd_demodata(args) -> int:
@@ -290,6 +316,17 @@ def main(argv=None) -> int:
     a.set_defaults(fn=cmd_demodata)
     args = p.parse_args(argv)
     data_dir = app_context.init(args.data)
+    # KOKEILUVERSIO: kaikki komennot estetään kokeilujakson päätyttyä (90 päivää).
+    from . import trial
+    kokeilu = trial.hae_tila(data_dir)
+    trial.tulosta_tilarivi(kokeilu)
+    if kokeilu["paattynyt"]:
+        trial.tulosta_paattymisilmoitus(kokeilu)
+        trial.ikkuna_paattynyt(kokeilu)
+        return 2
+    if kokeilu["uusi"]:
+        trial.tulosta_tervehtiminen(kokeilu)
+        trial.ikkuna_tervetuloa(kokeilu)
     _setup_logging(data_dir, args.verbose)
     try:
         return args.fn(args)

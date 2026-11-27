@@ -16,6 +16,19 @@ Huoltokello-työhallinnan rinnalle. Toimii selaimessa (myös puhelimessa), ei ul
 Komentorivi: `python -m huoltokello_talous --help` (alusta, palvelin, luo-johto, varmuuskopio, paketti,
 automaattivienti, huoltokello-synk, demodata, tarkista).
 
+## Kokeilujakso (90 päivää)
+
+Tämä julkaisu on **kokeiluversio**: ohjelma toimii täysin **90 päivää ensimmäisestä käynnistyksestä**.
+Ensimmäisellä käynnistyksellä avautuu tieto kokeilujakson aloituksesta; sitä ennen/kun jakso päättyy,
+käynnistys estetään ja ruudun keskelle näytetään ilmoitus **"Kokeilujaksosi on päättynyt."**
+
+**Kehittäjä:** Jani Malmberg – ohjelman kehittäjä
+**Sähköposti:** jani.malmberg@gmail.com
+
+Ohjelman **täyden version voi pyytää kehittäjältä sähköpostitse** ja **lisensseistä voi kysyä kehittäjältä**
+(jani.malmberg@gmail.com). Varmuuskopioi datasi ennen kokeilujakson päättymistä (`python -m huoltokello_talous
+varmuuskopio` tai asennuksessa luotu yöajo) – data säilyy kokeilujakson päättymisen jälkeenkin.
+
 **Demodata (esittely):** tyhjään tietokantaan saa valmiin esittelyaineiston komennolla
 `python -m huoltokello_talous demodata`. Lataus lisää demoyrityksen, työlajit, asiakkaat
 (Y-tunnukset ja OVT-tunnukset generoituna), tarvikkeet, työntekijät ja demo-käyttäjät,

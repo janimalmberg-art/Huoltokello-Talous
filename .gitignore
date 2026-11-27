@@ -18,6 +18,10 @@ varmuuskopiot/
 salaisuudet*
 secret*
 
+# Asennuspaketit (rakennetaan Julkaise-Kokeilu-GitHub.ps1-skriptilla, ei versioitua)
+Huoltokello-Talous-*.zip
+kokeilu-tmp/
+
 # Tyokalu- ja ymparistotiedostot
 _tmp/
 _tyo_tmp/

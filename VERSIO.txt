@@ -5,6 +5,26 @@ HUOLTOKELLO-TALOUS - muutoshistoria
 Sovellus: pienyrityksen talous- ja laskutusmoduuli Huoltokello-tyon-
 hallinnan rinnalle. Asennuspaketti: Huoltokello-Talous-<versio>.zip.
 
+v1.3.1-kokeilu - 27.11.2026
+---------------------------
+- KOKEILUVERSIO (rajoitettu julkaisu GitHubissa): ohjelma toimii 90
+  paivaa ensimmaisesta kaynnistyksesta (huoltokello_talous/trial.py).
+  Alkupaiva kirjataan datakansioon (kokeilu.json, varmistekentta);
+  muokattu tai vioittunut merkki ei nollaa kokeilua eika salli
+  kaynnistysta. Kello liikuttaminen taaksepin ei laske aikaa alusta.
+- Kaynnistyksessa naytetaan tila konsoliin; ensimmaisella kaynnilla
+  avautuu ruudun keskelle tervetuloikkuna. Kokeilujakson paattytya
+  kaynnistys estetaan ja naytetaan ruudun keskella ikkuna:
+  "Kokeilujaksosi on paattynyt" + kehittaja Jani Malmberg (ohjelman
+  kehittaja), s-posti jani.malmberg@gmail.com + tieto, etta tayden
+  version ja lisenssien voi pyytaa kehittajalta s-postitse. Poistumis-
+  koodi kaynnistysta estettaessa: 2.
+- Ajossa oleva palvelinvalvonta: taustasaeie tarkistaa kokeilujakson
+  tunnin valelein ja pysayttaa palvelimen jaksontaytyessa.
+- Testit: tests/test_kokeilu.py (8 uutta testia).
+- Graafiset kokeiluikkunat voi ohittaa testiajoissa ymparistomuuttujal-
+  la HKT_KOKEILU_EI_IKKUNAA=1.
+
 v1.3.0 - 25.11.2026
 -------------------
 - UUSI komento: python -m huoltokello_talous demodata. Lataa tyhjaan
