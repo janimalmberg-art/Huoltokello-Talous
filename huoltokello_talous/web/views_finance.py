@@ -1084,6 +1084,7 @@ def hk_settings(req):
         settings.set("hk.enabled", bool(req.f("hk.enabled")))
         audit(req, "huoltokello_asetukset", "settings", "hk")
         flash(req, "ok", "Huoltokello-yhteyden asetukset tallennettu.")
+        return redirect("/huoltokello/asetukset")
     except ValueError as exc:
         flash(req, "virhe", str(exc))
     return redirect("/huoltokello")
@@ -1104,3 +1105,50 @@ def hk_import(req):
     except hk_bridge.BridgeError as exc:
         flash(req, "virhe", str(exc))
     return redirect("/huoltokello")
+
+
+# ------------------------------------------------------------------ lisenssi
+
+@route("GET", r"/lisenssi", ("johto",))
+def lisenssi_view(req):
+    """Lisenssin tila ja aktivointi (avain + aktivointikoodi kehittäjältä)."""
+    from .. import licenssi
+    lis = licenssi.lataa_tila()
+    kone = licenssi.muotoile_kone(licenssi.konekoodi())
+    if lis.get("voimassa"):
+        tila_html = ("<div class='card'><p><b>Lisenssi voimassa:</b> {} (taso {})</p>"
+                     "<p>Avain: <code>{}</code><br>Aktivoitu: {}<br>Vanhentuu: {}</p>"
+                     "<p>Tuote: {} (ohjelmat: {})</p></div>").format(
+            e(lis.get("nimi", "")), e(str(lis.get("taso", ""))),
+            e(str(lis.get("avain", ""))), e(str(lis.get("aktivoitu", ""))),
+            e(str(lis.get("voimassa_paattyen", ""))), e(str(lis.get("tuote", ""))),
+            e(", ".join(lis.get("ohjelmat", []))))
+    else:
+        tila_html = ("<div class='card'><p><b>Ei voimassa olevaa lisenssiä.</b> {}</p>"
+                     "<p>Ilman lisenssiä ohjelma toimii 90 päivän kokeilujaksolla, joka "
+                     "käynnistyy ensimmäisellä käyttökerralla.</p></div>").format(e(str(lis.get("virhe", ""))))
+    lomake = ("<h2>Aktivoi lisenssi</h2>"
+              + form(req, "/lisenssi",
+                     "<div class='grid2'>"
+                     + field("avain", "Lisenssiavain (XXXXX-XXXXX-XXXXX-XXXXX-XXXXX)", "", required=True)
+                     + field("koodi", "Aktivointikoodi (XXXXXX-XXXXXX)", "", required=True)
+                     + "</div><small>Kehittäjän antama koodi on sidottu tämän koneen konekoodiin: "
+                       "sama avain ei kelpaa toisessa koneessa ilman uutta koodia.",
+                     "Aktivoi lisenssi")
+              + "<div class='card'><p>Tämän koneen <b>konekoodi</b>: <code>{}</code></p>"
+              "<p>Lähetä konekoodi kehittäjälle sähköpostilla jani.malmberg@gmail.com; "
+              "kehittäjä myöntää avaimen ja aktivointikoodin juuri tälle koneelle.</p></div>".format(e(kone)))
+    return layout(req, "Lisenssi", tila_html + lomake)
+
+
+@route("POST", r"/lisenssi", ("johto",))
+def lisenssi_aktivoi(req):
+    from .. import licenssi
+    tulos = licenssi.aktivoi(req.f("avain"), req.f("koodi"))
+    if tulos.get("ok"):
+        audit(req, "lisenssi_aktivoitu", "lisenssi", str(tulos.get("taso", "")), tulos.get("nimi", ""))
+        flash(req, "ok", "Lisenssi aktivoitu: {} (taso {}).".format(tulos.get("nimi", ""), tulos.get("taso", "")))
+    else:
+        flash(req, "virhe", str(tulos.get("virhe", "Aktivointi epäonnistui.")))
+    return redirect("/lisenssi")
+

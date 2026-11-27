@@ -126,8 +126,19 @@ def paattynyt_rivit(tila: dict | None = None) -> list:
         "",
         "Ohjelman täyden version voi pyytää kehittäjältä sähköpostitse.",
         "Ohjelman lisensseistä voi kysyä kehittäjältä.",
+        "",
+        *lisenssi_rivit(),
     ])
     return rivit
+
+
+def lisenssi_rivit() -> list:
+    """Rivit, jotka opastavat lisenssin aktivointiin (kokeiluikkuna + asiakaspalvelu)."""
+    return [
+        "Voit aktivoida lisenssin jo nyt: syötä Lisenssiavain ja",
+        "aktivointikoodi kehittäjältä alle ja paina Aktivoi.",
+        "Konekoodi löytyy myös ohjelman asetuksista (Lisenssi-sivu).",
+    ]
 
 
 def tervehdys_rivit(tila: dict) -> list:
@@ -169,10 +180,16 @@ def tulosta_tilarivi(tila: dict) -> None:
 
 # ------------------------------------------------------------------ ikkunat
 
-def _nayta_ikkuna(otsikko: str, rivit: list) -> None:
-    """Näyttää ruudun keskellä ikkunan; ei mitään jos näyttöä tai tkinteriä ei ole."""
+def _nayta_ikkuna(otsikko: str, rivit: list, aktivointi: bool = False) -> bool:
+    """Näyttää ruudun keskellä ikkunan; ei mitään jos näyttöä tai tkinteriä ei ole.
+
+    Palautuu: aktivoinnin onnistumista (True) tai False, jos ei ikkunaa /
+    käyttäjä ei aktivoi. Kun aktivointi=True, ikkunaan lisätään
+    Lisenssiavain- ja aktivointikoodi-kentät sekä Aktivoi-painike.
+    """
     if os.environ.get(_EI_IKKUNAA):
-        return
+        return False
+    aktivoitu_ok = {"arvo": False}
     try:
         import tkinter as tk
 
@@ -185,7 +202,20 @@ def _nayta_ikkuna(otsikko: str, rivit: list) -> None:
         frm = tk.Frame(root, bg="#f6f7f9", padx=30, pady=24)
         frm.pack(expand=True, fill="both")
 
-        for i, rivi in enumerate(rivit):
+        rivit_ikk = list(rivit)
+        if aktivointi:
+            konekoodi_rivi = ""
+            try:
+                from . import licenssi
+                konekoodi_rivi = "Tämä kone: {}. Lähetä se kehittäjälle, joka antaa avaimen ja aktivointikoodin.".format(
+                    licenssi.muotoile_kone(licenssi.konekoodi()))
+            except Exception:  # noqa: BLE001 - konekoodi on best effort
+                konekoodi_rivi = ""
+            if konekoodi_rivi:
+                rivit_ikk.append("")
+                rivit_ikk.append(konekoodi_rivi)
+
+        for i, rivi in enumerate(rivit_ikk):
             if rivi == "":
                 tk.Frame(frm, height=10, bg="#f6f7f9").pack()
                 continue
@@ -194,13 +224,49 @@ def _nayta_ikkuna(otsikko: str, rivit: list) -> None:
             tk.Label(
                 frm, text=rivi, bg="#f6f7f9",
                 font=("Segoe UI", koko, "bold" if bold else "normal"),
-                justify="center", wraplength=430,
+                justify="center", wraplength=470,
             ).pack(fill="x")
 
-        ok = tk.Button(frm, text="OK", width=14, command=root.destroy,
-                       font=("Segoe UI", 10, "bold"))
-        ok.pack(pady=(18, 2))
-        ok.focus_set()
+        kentat = {}
+        if aktivointi:
+            kentatrivi = tk.Frame(frm, bg="#f6f7f9")
+            kentatrivi.pack(pady=(12, 0))
+            tk.Label(kentatrivi, text="Lisenssiavain:", bg="#f6f7f9",
+                     font=("Segoe UI", 10)).grid(row=0, column=0, sticky="e", padx=4, pady=3)
+            e_avain = tk.Entry(kentatrivi, width=30, font=("Consolas", 11))
+            e_avain.grid(row=0, column=1, pady=3)
+            tk.Label(kentatrivi, text="Aktivointikoodi:", bg="#f6f7f9",
+                     font=("Segoe UI", 10)).grid(row=1, column=0, sticky="e", padx=4, pady=3)
+            e_koodi = tk.Entry(kentatrivi, width=30, font=("Consolas", 11))
+            e_koodi.grid(row=1, column=1, pady=3)
+            kentat["avain"] = e_avain
+            kentat["koodi"] = e_koodi
+
+            ilmoitus = tk.Label(frm, text="", bg="#f6f7f9", fg="#b91c1c",
+                                font=("Segoe UI", 9, "bold"), justify="center", wraplength=470)
+            ilmoitus.pack(pady=(6, 0))
+
+            def _aktivoi() -> None:
+                from . import licenssi
+                tulos = licenssi.aktivoi(e_avain.get(), e_koodi.get())
+                if tulos.get("ok"):
+                    aktivoitu_ok["arvo"] = True
+                    ilmoitus.configure(fg="#15803d", text="Lisenssi aktivoitu: {}. ".format(tulos.get("nimi", ""))
+                                       + "Sulje tämä ruutu ja käynnistä ohjelma uudelleen.")
+                    e_avain.configure(state="disabled")
+                    e_koodi.configure(state="disabled")
+                else:
+                    ilmoitus.configure(fg="#b91c1c", text=tulos.get("virhe", "Aktivointi epäonnistui."))
+
+            ok_nappi = tk.Button(frm, text="Aktivoi", width=14, command=_aktivoi,
+                                 font=("Segoe UI", 10, "bold"))
+            ok_nappi.pack(pady=(12, 8))
+            e_avain.focus_set()
+        else:
+            ok_nappi = tk.Button(frm, text="OK", width=14, command=root.destroy,
+                                 font=("Segoe UI", 10, "bold"))
+            ok_nappi.pack(pady=(18, 2))
+            ok_nappi.focus_set()
         root.protocol("WM_DELETE_WINDOW", root.destroy)
 
         root.update_idletasks()
@@ -211,12 +277,18 @@ def _nayta_ikkuna(otsikko: str, rivit: list) -> None:
         root.geometry("+{}+{}".format(max(0, (sw - lev) // 2), max(0, (sh - kor) // 2)))
         root.mainloop()
     except Exception:  # noqa: BLE001 - ikkuna on best effort; konsolitekstit jäävät
-        return
+        return False
+    return aktivoitu_ok["arvo"]
 
 
-def ikkuna_paattynyt(tila: dict | None = None) -> None:
-    """Ruudun keskellä ikkuna: kokeilujakso päättynyt + kehittäjän tiedot."""
-    _nayta_ikkuna("Huoltokello-Talous - kokeilujakso päättynyt", paattynyt_rivit(tila))
+def ikkuna_paattynyt(tila: dict | None = None) -> bool:
+    """Ruudun keskellä ikkuna: kokeilujakso päättynyt + kehittäjän tiedot.
+
+    Ikkunassa on lisäksi Lisenssiavain- ja aktivointikoodi-kentät ja
+    Aktivoi-painike. Palauttaa True vain, jos aktivointi onnistui juuri nyt.
+    """
+    return _nayta_ikkuna("Huoltokello-Talous - kokeilujakso päättynyt",
+                         paattynyt_rivit(tila), aktivointi=True)
 
 
 def ikkuna_tervetuloa(tila: dict) -> None:

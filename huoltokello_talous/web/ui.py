@@ -67,7 +67,8 @@ NAV_GROUPS = [
                           ("/palkat", "Palkat", "wallet", ("johto", "kirjanpitaja")),
                           ("/viennit", "Viennit", "send", ("johto", "kirjanpitaja"))]),
     ("Hallinta", "blue", [("/rekisterit", "Rekisterit", "db", ("johto", "tyonjohto")),
-                          ("/asetukset", "Asetukset", "settings", ("johto",))]),
+                          ("/asetukset", "Asetukset", "settings", ("johto",)),
+                          ("/lisenssi", "Lisenssi", "key", ("johto",))]),
 ]
 NAV = [(h, label, roles) for _g, _c2, items in NAV_GROUPS for h, label, _i, roles in items]
 SECTION_OF = {

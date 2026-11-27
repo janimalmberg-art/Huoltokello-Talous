@@ -5,6 +5,37 @@ HUOLTOKELLO-TALOUS - muutoshistoria
 Sovellus: pienyrityksen talous- ja laskutusmoduuli Huoltokello-tyon-
 hallinnan rinnalle. Asennuspaketti: Huoltokello-Talous-<versio>.zip.
 
+v1.4.0-kokeilu - 27.11.2026
+---------------------------
+- UUSI: Lisenssijarjestelma (huoltokello_talous/licenssi.py). Ilman lisen-
+  ssia ohjelma toimii 90 paivan kokeilujaksolla kuten aiemmin; voimassa
+  oleva lisenssi ohittaa kokeilurajoitukset. Tuetut tasot: 01 Yritys Pieni
+  (1 serveri / 50 tyontekijaa / johto +5), 02 Yritys (1/300/+10),
+  03 Yritys Suuri (1/900/+20) ja 04 Yritys Enterprise (5/2000/+100).
+- Lisenssiavain 25 numeroa (XXXXX-XXXXX-XXXXX-XXXXX-XXXXX) + kehittajan
+  konekohtainen aktivointikoodi 12 numeroa (XXXXXX-XXXXXX). Aktivointi
+  sidotaan konekoodiin (MachineGuid + C-aseman sarjanumero + koneen
+  nimi, HMAC): sama avain ei kelpaa toiselle koneelle ilman uutta koodia
+  (kehittaja myontaa koodit Lisenssityokalulla ja vapaauttaa sidonnat
+  uudelleenasennuksissa). Paivitys isompaan tasoon: uusi avain, data
+  sailytetaan.
+- Kokeilujakson paattymisikkunaan (ruudun keskelle) lisatty
+  "Lisenssiavain"/"Aktivointikoodi" -kentat ja AKTIVOI-painike: aktivoinnin
+  jalkeen ohjelma kaynnistyy uudelleenajossa normaalisti (poistumiskoodi 2
+  vain jos lisenssia ei anneta). Konekoodi naytetaan samassa ikkunassa.
+- UUSI komento: python -m huoltokello_talous lisenssi [tila | aktivoi
+  --avain X --koodi Y]. Tila tulostaa konekoodin ja lisenssin tiedot.
+- UUSI web-sivu: Hallinta > Lisenssi (/lisenssi, johto): nykytilan tiedot,
+  konekoodi ja aktivointilomake. Ajossa oleva palvelinvalvonta ei pysayta
+  palvelinta, kun voimassa oleva lisenssi on tallennettu.
+- Lisenssitila talteen kaikille ohjelmille yhteiseen tiedostoon
+  %APPDATA%\Hk-Lisenssi\lisenssi.json (varmiste HMAC-SHA256; kasimuokkaus
+  havaitaan). Sama avain aktivoi molemmat ohjelmat samassa koneessa.
+- Asennusvelho kysyy valinnaisen lisenssiavaimen ja aktivointikoodin
+  asennuksen lopussa (jattamalla tyhjiksi jatkuu 90 pv kokeilulla).
+- Testit: tests/test_licenssi.py (kultavektorit kehittajan Lisenssi-
+  tyokalusta; PowerShell-_lisensi.ps1 tuottaa samat tulokset).
+
 v1.3.1-kokeilu - 27.11.2026
 ---------------------------
 - KOKEILUVERSIO (rajoitettu julkaisu GitHubissa): ohjelma toimii 90

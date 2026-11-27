@@ -9,6 +9,7 @@
   demodata            lataa esittelyaineiston tyhjään tietokantaan (asiakkaat, aikakirjaukset,
                       laskut, palkat, demo-käyttäjät - ei tuotantokäyttöön)
   tarkista            tietokannan eheys, muutoslokin ketju ja kirjausten täsmäys
+  lisenssi            lisenssin tila / aktivointi avaimella ja aktivointikoodilla
 """
 from __future__ import annotations
 
@@ -245,7 +246,7 @@ def cmd_serve(args) -> int:
 def _kokeilu_valvonta(data_dir: str | None, stop: threading.Event) -> None:
     """Lopettaa käynnissä olevan palvelimen, kun 90 päivän kokeilujakso päättyy."""
     import os
-    from . import trial
+    from . import licenssi, trial
     while not stop.wait(3600):
         try:
             tila = trial.hae_tila(data_dir)
@@ -253,6 +254,12 @@ def _kokeilu_valvonta(data_dir: str | None, stop: threading.Event) -> None:
             return
         if not tila.get("paattynyt"):
             continue
+        # Voimassa oleva lisenssi ohittaa kokeilujakson valvonnan.
+        try:
+            if licenssi.lataa_tila().get("voimassa"):
+                continue
+        except Exception:  # noqa: BLE001
+            pass
         log.critical("Kokeilujakso päättynyt - palvelin pysäytetään.")
         trial.tulosta_paattymisilmoitus(tila)
         trial.ikkuna_paattynyt(tila)
@@ -262,6 +269,30 @@ def _kokeilu_valvonta(data_dir: str | None, stop: threading.Event) -> None:
         except Exception:  # noqa: BLE001
             pass
         os._exit(2)
+
+
+def cmd_lisenssi(args) -> int:
+    """Näyttää lisenssin tilan tai aktivoi avain + aktivointikoodilla."""
+    from . import licenssi
+    if args.toiminto == "aktivoi":
+        if not args.avain or not args.koodi:
+            print("Anna --avain ja --koodi (kehittäjältä). Konekoodi: "
+                  + licenssi.muotoile_kone(licenssi.konekoodi()))
+            return 1
+        tulos = licenssi.aktivoi(args.avain, args.koodi)
+        if tulos.get("ok"):
+            print("Lisenssi aktivoitu: {} (taso {}).".format(tulos.get("nimi", ""), tulos.get("taso", "")))
+            return 0
+        print("Virhe: " + str(tulos.get("virhe", "aktivointi epäonnistui")))
+        return 1
+    tila = licenssi.lataa_tila()
+    if tila.get("voimassa"):
+        print("Lisenssi voimassa: {} (taso {}, avain {}...)".format(tila.get("nimi", ""), tila.get("taso", ""), tila.get("avain", "")[:5]))
+        print("Vanhentuu: {}".format(tila.get("voimassa_paattyen", "ikuinen")))
+    else:
+        print("Ei voimassa olevaa lisenssiä: " + str(tila.get("virhe", "")))
+    print("Konekoodi: {} (lähetä kehittäjälle aktivointiin)".format(licenssi.muotoile_kone(licenssi.konekoodi())))
+    return 0
 
 
 def cmd_demodata(args) -> int:
@@ -314,16 +345,30 @@ def main(argv=None) -> int:
     a.set_defaults(fn=cmd_verify)
     a = sub.add_parser("demodata", help="lataa demodataa tyhjään tietokantaan (esittelykäyttöön)")
     a.set_defaults(fn=cmd_demodata)
+    a = sub.add_parser("lisenssi", help="lisenssin tila ja aktivointi (ilman lisensiä 90 pv kokeilujakso)")
+    a.add_argument("toiminto", nargs="?", choices=["tila", "aktivoi"], default="tila")
+    a.add_argument("--avain", default="")
+    a.add_argument("--koodi", default="")
+    a.set_defaults(fn=cmd_lisenssi)
     args = p.parse_args(argv)
     data_dir = app_context.init(args.data)
-    # KOKEILUVERSIO: kaikki komennot estetään kokeilujakson päätyttyä (90 päivää).
-    from . import trial
+    # KOKEILUVERSIO: kaikki komennot estetään kokeilujakson päätyttyä (90 päivää),
+    # paitsi kun koneella on voimassa oleva lisenssi (kehittäjän myöntämä).
+    from . import licenssi, trial
     kokeilu = trial.hae_tila(data_dir)
     trial.tulosta_tilarivi(kokeilu)
-    if kokeilu["paattynyt"]:
+    lisensa = licenssi.lataa_tila()
+    if lisensa.get("voimassa"):
+        print("Lisenssi: {} (taso {}) - kokeilurajoitukset ohitettu.".format(lisensa.get("nimi", ""), lisensa.get("taso", "")))
+    if kokeilu["paattynyt"] and not lisensa.get("voimassa"):
         trial.tulosta_paattymisilmoitus(kokeilu)
-        trial.ikkuna_paattynyt(kokeilu)
-        return 2
+        aktivoitu_nyt = trial.ikkuna_paattynyt(kokeilu)
+        if not aktivoitu_nyt:
+            return 2
+        lisensa = licenssi.lataa_tila()
+        if not lisensa.get("voimassa"):
+            return 2
+        print("Lisenssi aktivoitu: {}. Ohjelma käynnistyy.".format(lisensa.get("nimi", "")))
     if kokeilu["uusi"]:
         trial.tulosta_tervehtiminen(kokeilu)
         trial.ikkuna_tervetuloa(kokeilu)

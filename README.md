@@ -29,6 +29,24 @@ Ohjelman **täyden version voi pyytää kehittäjältä sähköpostitse** ja **l
 (jani.malmberg@gmail.com). Varmuuskopioi datasi ennen kokeilujakson päättymistä (`python -m huoltokello_talous
 varmuuskopio` tai asennuksessa luotu yöajo) – data säilyy kokeilujakson päättymisen jälkeenkin.
 
+## Lisenssi (uusi 1.4.0)
+
+Ilman lisenssiä ohjelma toimii 90 päivän kokeilujaksolla. Kun kehittäjä myöntää sinulle
+**lisenssiavaimen** (25 numeroa, `XXXXX-XXXXX-XXXXX-XXXXX-XXXXX`) ja **aktivointikoodin**
+(12 numeroa, `XXXXXX-XXXXXX`), voit aktivoida lisenssin:
+
+- kokeilujakson päättymisikkunassa (kentät "Lisenssiavain" ja "Aktivointikoodi", painike **Aktivoi**), tai
+- ohjelman **Hallinta → Lisenssi** -sivulla (näyttää myös konekoodin), tai
+- komentoriviltä `python -m huoltokello_talous lisenssi aktivoi --avain ... --koodi ...`.
+
+Aktivointi sidotaan koneeseen (**konekoodi**, näytettävä muoto `XXXX-XXXX-XXXX`): sama avain
+ei kelpaa toiselle koneelle ilman uutta aktivointikoodia. Uudelleenasennuksessa kehittäjä
+vapaauttaa vanhan sidonnan. Päivitys isompaan tasoon (Yritys Pieni → Yritys → Yritys Suuri →
+Yritys Enterprise) onnistuu aktivointisivulla antamalla uuden avaimen – **tiedot ja data säilyvät**.
+Tuetut tasot: Yritys Pieni (1 serveri / 50 tyontekijää / johto +5), Yritys (1 / 300 / +10),
+Yritys Suuri (1 / 900 / +20), Yritys Enterprise (5 serveria / 2000 / +100). Sama avain aktivoi
+Huoltokellon pääohjelman samassa koneessa.
+
 **Demodata (esittely):** tyhjään tietokantaan saa valmiin esittelyaineiston komennolla
 `python -m huoltokello_talous demodata`. Lataus lisää demoyrityksen, työlajit, asiakkaat
 (Y-tunnukset ja OVT-tunnukset generoituna), tarvikkeet, työntekijät ja demo-käyttäjät,

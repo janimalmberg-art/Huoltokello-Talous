@@ -16,7 +16,9 @@ param(
     [int]$Portti = 8090,
     [switch]$Automaattikaynnistys,
     [switch]$Ajastettu,
-    [switch]$Testaa
+    [switch]$Testaa,
+    [string]$LisenssiAvain = '',
+    [string]$LisenssiKoodi = ''
 )
 $ErrorActionPreference = 'Stop'
 $src = $PSScriptRoot
@@ -74,6 +76,27 @@ $env:HUOLTOKELLO_TALOUS_DATA = $data
 Push-Location $app
 try { & $py -m huoltokello_talous --data $data alusta; if ($LASTEXITCODE -ne 0) { throw 'Alustus epaonnistui.' } }
 finally { Pop-Location }
+
+# LISSENSI (valinnainen): ilman lisenssia ohjelma toimii 90 paivan kokeilujaksolla.
+# Aktivointi: konekoodi lahetetaan kehittajalle (jani.malmberg@gmail.com), joka
+# myontaa avaimen + aktivointikoodin juuri talle koneelle Lisenssityokalulla.
+Write-Host ''
+Write-Host '=== Lisenssi (valinnainen) ===' -ForegroundColor Cyan
+Push-Location $app
+try { & $py -m huoltokello_talous --data $data lisenssi tila } finally { Pop-Location }
+$av = $LisenssiAvain
+if (-not $av) { $av = (Read-Host 'Lisenssiavain (tyhja = jatka kokeilujaksolla 90 pv)').Trim() }
+if ($av) {
+    $ko = $LisenssiKoodi
+    if (-not $ko) { $ko = (Read-Host 'Aktivointikoodi (kehittajalta)').Trim() }
+    Push-Location $app
+    try {
+        & $py -m huoltokello_talous --data $data lisenssi aktivoi --avain $av --koodi $ko
+        if ($LASTEXITCODE -ne 0) { Write-Warning 'Aktivointi epaonnistui - ohjelma jatkaa kokeilujaksolla (90 pv). Aktivointi voi tehda jalkikateen Asetukset > Lisenssi -sivulla.' }
+    } finally { Pop-Location }
+} else {
+    Write-Host 'Ohjelma jatkaa 90 paivan kokeilujaksolla. Aktivointi: ohjelman Asetukset > Lisenssi -sivu.'
+}
 
 # Kaynnistin
 $launcher = Join-Path $root 'Kaynnista-Talous.cmd'

@@ -27,9 +27,9 @@ Set-Location $PSScriptRoot
 
 $omistaja = 'janimalmberg-art'
 $arkisto = 'Huoltokello-Talous'
-$versio = 'v1.3.1-kokeilu'
-$relNimi = 'Huoltokello-Talous v1.3.1 KOKEILUVERSIO (toimii 90 paivaa)'
-$zipinNimi = 'Huoltokello-Talous-1.3.1-Kokeilu-90pv.zip'
+$versio = 'v1.4.0-kokeilu'
+$relNimi = 'Huoltokello-Talous v1.4.0 KOKEILUVERSIO (toimii 90 paivaa)'
+$zipinNimi = 'Huoltokello-Talous-1.4.0-Kokeilu-90pv.zip'
 $api = "https://api.github.com/repos/$omistaja/$arkisto"
 
 # ------------------------------------------------- tunnukset (GCM)
@@ -193,14 +193,18 @@ if ($EiJulkaisua) {
 # ------------------------------------------------- 3) julkaisu
 
 $kuvaus = @"
-**Huoltokello-Talous KOKEILUVERSIO v1.3.1 - toimii 90 päivää ensimmäisestä käynnistyksestä.**
+**Huoltokello-Talous KOKEILUVERSIO v1.4.0 - toimii 90 päivää ensimmäisestä käynnistyksestä.**
 
 - Asennus: pura zip ja kaksoisnapsauta **Asenna-Talous.cmd** (vaatii Python 3.10+ ja Windows; ks. README).
 - Kokeilujakso: **90 päivää**. Jaksontäytyessä ohjelma näyttää ruudun keskellä ilmoituksen
-  **"Kokeilujaksosi on päättynyt."** eikä käynnisty enää - kokeiluaikaan sisältyy kaikki ominaisuudet.
+  **"Kokeilujaksosi on päättynyt"** eikä käynnisty enää - kokeiluaikaan sisältyy kaikki ominaisuudet.
+- **Uutta 1.4.0: Lisenssijärjestelmä** - kokeiluikkunassa voi syöttää **lisenssiavaimen (25 numeroa)**
+  ja kehittäjän antaman **aktivointikoodin** ja painaa Aktivoi; sama lisenssiavain kelpaa
+  Huoltokellon pääohjelmalle. Aktivointi myös ohjelman **Asetukset > Lisenssi** -sivulla
+  (konekoodi näytetään siellä). Ilman lisenssiä toimii 90 pv kokeilujakso.
 - **Kehittäjä: Jani Malmberg** (ohjelman kehittäjä) - **jani.malmberg@gmail.com**
-- Ohjelman **täyden version voi pyytää kehittäjältä sähköpostitse**; **lisensseistä voi kysyä kehittäjältä**.
-- Data säilyy kokeilujakson päättymisen jälkeen; varmuuskopio: python -m huoltokello_talous varmuuskopio
+- Lisenssit, konekohtaiset aktivoinnit ja päivitykset isompiin tasoihin: kehittäjältä.
+- Data säilyy kokeilujakson/lisenssin jälkeen; varmuuskopio: python -m huoltokello_talous varmuuskopio
 
 Täysi versio ei ole saatavilla tässä julkaisussa - se saadaan kehittäjältä.
 "@
